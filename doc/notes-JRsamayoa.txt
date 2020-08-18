@@ -1,0 +1,93 @@
+JRsamayoa 08/10/20
+
+    What are the steps to get this working in Ultibo?
+
+You have to remove everything related to setting a OpenGL Context,remove glfw_ calls
+
+    glfwGetCursorPos(window, &mx, &my);
+    glfwGetWindowSize(window, &winWidth, &winHeight);
+    glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+
+I know this sound off, but that part is handled by ultibo in pascal side, you can read
+the OpenGL ES 2.0 example from ultibo everything is setup from there
+
+-dispmanx
+-egl
+-opengl context
+
+from that point you can use opengl in C, just keep everything under the same thread
+JRsamayoa 08/13/20
+    Ultibo_Projects/Tesselator/RPi3/GLES2Unit.pas ~/ultibo/core/examples/VideoCoreIV/OpenGLES/HelloGLES2/RPi2/GLES2Unit.pas
+    Both have the same name but function quite differently. Should the file be renamed?
+
+You are right, didn't think about until now, since the setting up of OpenglES2.0 rendering context is done on that unit, I didn't wanted to change
+the name, also to leave a clear indication of where I got the code from, I'll change the name and leave a coment of the original file at the top
+
+    Looking at the differences between
+    diffuse svgTessellator.c ~/nuklear/demo/sdl_opengl2/main.c
+
+this one is long but it might be helpfull to understanding what I did:
+In the Nuklear/demo/sdl_opengles2/main.c you will find the include file nuklear_sdl_gles2.h
+this is were the rendering code actually is with the following functions:
+
+NK_API struct nk_context* nk_sdl_init(SDL_Window *win);
+NK_API void nk_sdl_font_stash_begin(struct nk_font_atlas **atlas);
+NK_API void nk_sdl_font_stash_end(void);
+NK_API int nk_sdl_handle_event(SDL_Event *evt);
+NK_API void nk_sdl_render(enum nk_anti_aliasing , int max_vertex_buffer, int max_element_buffer);
+NK_API void nk_sdl_shutdown(void);
+NK_API void nk_sdl_device_destroy(void);
+NK_API void nk_sdl_device_create(void);
+
+I took this functions and removed sdl, you can find these functions in the file svgTessellator.c (changed _sdl_ to _gen_ will change
+to _ultb_ in the future)
+
+NK_API void nk_gen_device_create(void);
+NK_API void nk_gen_device_destroy(void);
+NK_INTERN void nk_gen_device_upload_atlas(const void *image, int width, int height);
+NK_API void nk_gen_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_buffer, int rwidth, int rheight);
+NK_API struct nk_context* nk_gen_init();
+NK_API void nk_gen_font_stash_begin(struct nk_font_atlas **atlas);
+NK_API void nk_gen_font_stash_end(void);
+NK_API void nk_gen_shutdown(void);
+
+added a few things to make them work, the reason for using opengles2.0 and not other opengl profile is that they use VAO,
+this functionallity is included in the file gl2ext.h, if you include this and compile using VAO (vertex array object) it will compile, but
+it won't link, so thats why the sdl_gles2 implementation was used, and also the vertex shader version #100 and the precision
+specifier for the fragment shader "precision mediump" or the high one is just a line but without it the shader breaks;
+
+after this in the file svgTessellator.c you would find the function:
+
+static void MainLoop(void* loopArg);
+
+if you take a look at this function you can find all the gui code, if you want to try the node code this is were you
+replace it with the one in the function
+
+static int node_editor(struct nk_context *ctx);
+
+found in Nuklear/demo/node_editor.c, you also have to add the structures found in that file, all the other
+demos should work in the same way, except for the filemanager one, this one needs specific directory functionality
+I believe that can be implement with the current way ultibo handles files, but haven't really look into it.
+
+    These two header files were added. The program is targeted at the RPi3 in Ultibo
+    which has a videocore IV GPU. I am working on RPi4 4gB which has a videocore VI GPU.
+    Will this at some point, be problem as the videcore VI GPU becomes, fully
+    supported in Ultibo?
+
+this one is for the ultibo team, but I'll give a try, correct me if I'm wrong, if you check the
+directory Nuklear/demo/ it has different context profiles (lets call it that way)
+there is: (not listing all)
+-glfw_opengl2
+-glfw_opengl3
+-glfw_opengl4
+-sdl_opengl2
+-sdl_opengl3
+-sdl_opengles2
+
+this are actually window managers and rendering devices but the gui/nuklear code won't change,
+I tried this on the pc with diferent rendering context profiles, 3.3, 4.0 also 2.0 (emulated?)
+what will change is the rendering part and context_init, shaders,window manager etc.. but I don't believe it would be that hard to
+port that functionality, once the ultibo team has a working example for OpenglGL on the new raspberry Pi they would
+have done the heavylifting (as always), if you code your gui with nuklear it would work almost everywhere you managed to get
+a Opengl Rendering context, I even tried nuklear using the frame buffer in ultibo (didn't post it) it also works so its safe to
+say that there won't be much trouble

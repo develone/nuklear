@@ -1,0 +1,235 @@
+Testing nuklear 08/10/20 RPi4 4gB
+*****************New findings 08/15/20******************************
+This is what I forked when I started my work.
+https://github.com/cejasmasmas/ultiboTessellator/blob/master/nuklear/nuklear.h can not be
+seen requires View raw
+
+Checking 
+diff ~/Ultibo_Projects/Tesselator/RPi3/nuklear/nuklear.h ~/ultiboTessellator/nuklear/nuklear.h
+No difference. 
+
+svgTessellator.c uses #include "nuklear/nuklear.h" which is not the same as 
+diffuse ~/nuklear/src/nuklear.h.no-paq ~/ultiboTessellator/nuklear/nuklear.h 
+diffuse ~/nuklear/src/nuklear.h.paq ~/ultiboTessellator/nuklear/nuklear.h
+One of the first changes is around line 3733 where an #ifndef NK_STRTOD was added
+There are many more differences.   This file should be renamed and maybe the source and 
+changelog added.
+
+#ifndef NK_SINGLE_FILE
+  #define NK_SINGLE_FILE
+#endif
+svgTessellator.c
+
+#define NK_SHADER_VERSION "#version 100\n"
+
+demo/sdl_opengles2/nuklear_sdl_gles2.h:#define NK_SHADER_VERSION "#version 100\n"
+demo/sdl_opengles2/nuklear_sdl_gles2.h:        NK_SHADER_VERSION
+demo/sdl_opengles2/nuklear_sdl_gles2.h:        NK_SHADER_VERSION
+I would use glfw_opengl2 as it would be the easiest to remove, an leave
+only the rendering code just check the shader version is 100, if its for ultibo
+I have found that if you have the opengles2.0 rendering code, you can make
+almost any demo work, if this is for nuklear code, search for the sdl_opengles2
+and remove the sdl calls if you take a look at the tessellation.c file I already
+did it, this would be part of the cleaning were I will put the nuklear init, and
+rendering code in a single header for easier identification, the only nuklear
+demo that doesn't work is the file manager, but this can be made to work
+by changing the directory reading functions
+*****************New findings 08/15/20******************************
+*****************New findings 08/14/20******************************
+
+Adding -DINCLUDE_ALL Makefile nuklear/demo/sdl_opengl2 
+The nuklear/src folder has a python code that modifies the nuklear.h file.
+added src/nuklear.h.no-paq a copy of src/nuklear.h
+added src/nuklear.h.paq which was created with  ./paq.sh > nuklear.h.paq
+The Readme.md in nuklear/src On Linux/Mac just run ./paq > ../nuklear.h which would overwrite 
+the nuklear/
+cp src/nuklear.h.paq nuklear.h demo/sdl_opengl2 make creates bin/demo.
+cp src/nuklear.h.no-paq nuklear.h demo/sdl_opengl2 make fails to create bin/demo.
+
+Initial tests have not used the header executing the command
+
+ 
+I have not seen this procedure to modify the header based on OS.      
+This might be useful in the future.  Need to determine which would be    
+for Ultibo bare metal. Adding -DINCLUDE_ALL to CFLAGS in demo/sdl_opengl2.
+Demo programs main.c have the following include file at the top level nuklear
+#include "../../nuklear.h"
+In nuklear/demo
+grep -R '../../nuklear.h' */* | less
+allegro5/main.c:#include "../../nuklear.h"
+d3d11/main.c:#include "../../nuklear.h"
+d3d9/main.c:#include "../../nuklear.h"
+gdi/main.c:#include "../../nuklear.h"
+gdip/main.c:#include "../../nuklear.h"
+glfw_opengl2/main.c:#include "../../nuklear.h"
+glfw_opengl3/main.c:#include "../../nuklear.h"
+glfw_opengl4/main.c:#include "../../nuklear.h"
+Binary file sdl_opengl2/bin/demo matches
+sdl_opengl2/main.c:#include "../../nuklear.h"
+sdl_opengl3/main.c:#include "../../nuklear.h"
+sdl_opengles2/main.c:#include "../../nuklear.h"
+sfml_opengl2/main.cpp:#include "../../nuklear.h"
+sfml_opengl3/main.cpp:#include "../../nuklear.h"
+x11/main.c:#include "../../nuklear.h"
+x11_opengl2/main.c:#include "../../nuklear.h"
+x11_opengl3/main.c:#include "../../nuklear.h"
+x11_rawfb/main.c:#include "../../nuklear.h"
+x11_xft/main.c:#include "../../nuklear.h"
+*****************New findings 08/14/20******************************
+demo x11	creates bin/zahnrad works okay
+
+demo x11_opengl2	creates bin/demo works okay
+
+demo x11_opengl3
+bin/demo 
+[X11] Failed to create OpenGL 3.0 context
+[X11] ... using old-style GLX context!
+[GL]: Graphics card does not fullfill minimum OpenGL 2.0 support
+demo: ../../nuklear.h:13949: nk_input_begin: Assertion `ctx' failed.
+Aborted
+
+glfw_opengl2
+Makefile modification
+-               LIBS = -lglfw -lGL -lm -lGLU
++               LIBS = -lglfw3 -lGL -lm -lGLU
+make
+rm -f bin/demo 
+cc main.c -std=c99 -pedantic -O2 -o bin/demo -lglfw3 -lGL -lm -lGLU
+/usr/bin/ld: //usr/local/lib/libglfw3.a(vulkan.c.o): undefined reference to symbol 'dlopen@@GLIBC_2.4'
+/usr/bin/ld: //lib/arm-linux-gnueabihf/libdl.so.2: error adding symbols: DSO missing from command line
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:25: demo] Error 1
+
+
+
+devel@mypi3-20:~/nuklear/example $ make
+cc -std=c99 -pedantic -O2 -o bin/file_browser file_browser.c -L/usr/local/lib -lglfw3 -lGL -lm -lGLU -lGLEW
+file_browser.c:15:10: fatal error: GL/glew.h: No such file or directory
+ #include <GL/glew.h>
+          ^~~~~~~~~~~
+compilation terminated.
+make: *** [Makefile:32: file_browser] Error 1
+
+sudo apt install libglew-dev
+
+devel@mypi3-20:~/nuklear/example $ make
+cc -std=c99 -pedantic -O2 -o bin/file_browser file_browser.c -L/usr/local/lib -lglfw3 -lGL -lm -lGLU -lGLEW
+/usr/bin/ld: /usr/local/lib/libglfw3.a(vulkan.c.o): undefined reference to symbol 'dlopen@@GLIBC_2.4'
+/usr/bin/ld: //lib/arm-linux-gnueabihf/libdl.so.2: error adding symbols: DSO missing from command line
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:32: file_browser] Error 1
+
+-               LIBS := $(GLFW3) -lGL -lm -lGLU -lGLEW
++               LIBS := $(GLFW3) -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
+devel@mypi3-20:~/nuklear/example $ make
+cc -std=c99 -pedantic -O2 -o bin/file_browser file_browser.c -L/usr/local/lib -lglfw3 -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
+cc -std=c99 -pedantic -O2 -o bin/extended extended.c -L/usr/local/lib -lglfw3 -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
+cc -std=c99 -pedantic -O2 -o bin/canvas canvas.c -L/usr/local/lib -lglfw3 -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
+cc -std=c99 -pedantic -O2 -o bin/skinning skinning.c -L/usr/local/lib -lglfw3 Yes, it's graphics card limitation, mesa supports minimum 3.1 for all included drivers: https://mesamatrix.net/
+Proprietary drivers should support max hardware capabilities too
+ls bin/
+canvas  extended  file_browser  skinning
+
+devel@mypi3-20:~/nuklear/example $ bin/canvas 
+Error 65543: GLX: Failed to create context: GLXBadFBConfig
+canvas: /home/devel/glfw/src/window.c:958: glfwSetWindowUserPointer: Assertion `window != NULL' failed.
+Aborted
+devel@mypi3-20:~/nuklear/example $ bin/extended 
+Error 65543: GLX: Failed to create context: GLXBadFBConfig
+extended: /home/devel/glfw/src/window.c:958: glfwSetWindowUserPointer: Assertion `window != NULL' failed.
+Aborted
+devel@mypi3-20:~/nuklear/example $ bin/file_browser 
+Error 65543: GLX: Failed to create context: GLXBadFBConfigq
+file_browser: /home/devel/glfw/src/window.c:958: glfwSetWindowUserPointer: Assertion `window != NULL' failed.
+Aborted
+devel@mypi3-20:~/nuklear/example $ bin/skinning 
+Error 65543: GLX: Failed to create context: GLXBadFBConfig
+skinning: /home/devel/glfw/src/window.c:958: glfwSetWindowUserPointer: Assertion `window != NULL' failed.
+Aborted
+
+https://github.com/vurtun/nuklear/issues/364
+
+glxinfo | grep 'version'
+server glx version string: 1.4
+client glx version string: 1.4
+GLX version: 1.4
+    Max core profile version: 0.0
+    Max compat profile version: 2.1
+    Max GLES1 profile version: 1.1
+    Max GLES[23] profile version: 3.1
+OpenGL version string: 2.1 Mesa 19.3.2
+OpenGL shading language version string: 1.20
+OpenGL ES profile version string: OpenGL ES 3.1 Mesa 19.3.2
+OpenGL ES profile shading language version string: OpenGL ES GLSL ES 3.10
+    GL_EXT_separate_shader_objects, GL_EXT_shader_implicit_conversions,
+
+comments
+Hmmm... how odd, glxinfo shows 2.1 for me too. Is that a graphics card limitation? My system is up to date, so I don't think it's a software issue
+
+Yes, it's graphics card limitation, mesa supports minimum 3.1 for all included drivers: https://mesamatrix.net/
+Proprietary drivers should support max hardware capabilities too
+
+glfw_opengl2
+Makefile modification
+-               LIBS = -lglfw -lGL -lm -lGLU
++               LIBS = -lglfw3 -lGL -lm -lGLU
+make
+rm -f bin/demo 
+cc main.c -std=c99 -pedantic -O2 -o bin/demo -lglfw3 -lGL -lm -lGLU
+/usr/bin/ld: //usr/local/lib/libglfw3.a(vulkan.c.o): undefined reference to symbol 'dlopen@@GLIBC_2.4'
+/usr/bin/ld: //lib/arm-linux-gnueabihf/libdl.so.2: error adding symbols: DSO missing from command line
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:25: demo] Error 1
+2nd chg 
+-               LIBS = -lglfw3 -lGL -lm -lGLU
++               LIBS = -lglfw3 -lGL -lm -lGLU -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
+
+devel@mypi3-20:~/nuklear/demo/glfw_opengl3 $ make
+rm -f bin/demo 
+cc main.c -std=c99 -pedantic -O2 -o bin/demo -L/usr/local/lib -lglfw3 -lGL -lm -lGLU -lGLEW
+/usr/bin/ld: /usr/local/lib/libglfw3.a(vulkan.c.o): undefined reference to symbol 'dlopen@@GLIBC_2.4'
+/usr/bin/ld: //lib/arm-linux-gnueabihf/libdl.so.2: error adding symbols: DSO missing from command line
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:26: demo] Error 1
+devel@mypi3-20:~/nuklear/demo/glfw_opengl3 $ git diff Makefile
+diff --git a/demo/glfw_opengl3/Makefile b/demo/glfw_opengl3/Makefile
+index da95261..159383d 100644
+--- a/demo/glfw_opengl3/Makefile
++++ b/demo/glfw_opengl3/Makefile
+@@ -16,7 +16,7 @@ else
+        ifeq ($(UNAME_S),Darwin)
+                LIBS := $(GLFW3) -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -lm -lGLEW -L/usr/local/lib
+        else
+-               LIBS = $(GLFW3) -lGL -lm -lGLU -lGLEW
++               LIBS = $(GLFW3) -lGL -lm -lGLU -lGLEW -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
+        endif
+ endif
+ 
+devel@mypi3-20:~/nuklear/demo/glfw_opengl3 $ make
+rm -f bin/demo 
+cc main.c -std=c99 -pedantic -O2 -o bin/demo -L/usr/local/lib -lglfw3 -lGL -lm -lGLU -lGLEW -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
+devel@mypi3-20:~/nuklear/demo/glfw_opengl3 $ bin/demo 
+Error 65543: GLX: Failed to create context: GLXBadFBConfig
+demo: /home/devel/glfw/src/window.c:547: glfwGetWindowSize: Assertion `window != NULL' failed.
+Aborted
+
+sudo apt-get install libsdl2-dev
+devel@mypi3-20:~/nuklear/demo/sdl_opengl2 $ make
+creates bin/demo works okay
+
+devel@mypi3-20:~/nuklear/demo/x11_opengl2 $ bin/demo 
+[X11] Failed to create OpenGL 3.0 context
+[X11] ... using old-style GLX context!
+Major chg in demo when the Makefile is modified.
+-CFLAGS += -std=c99 -pedantic -O2
++CFLAGS += -std=c99 -pedantic -O2 -DINCLUDE_ALL
+
+Adding the  -DINCLUDE_ALL to Makefile in glfw_opengl2
+
+-CFLAGS += -std=c99 -pedantic -O2
++CFLAGS += -std=c99 -pedantic -O2 -DINCLUDE_ALL
+
+Adding the  -DINCLUDE_ALL to Makefile in x11
+
+-CFLAGS += -std=c89 -pedantic -O2
++CFLAGS += -std=c99 -pedantic -O2 -DINCLUDE_ALL
