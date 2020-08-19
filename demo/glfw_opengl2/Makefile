@@ -2,7 +2,9 @@
 BIN = demo
 
 # Flags
-CFLAGS += -std=c99 -pedantic -O2 -DINCLUDE_ALL
+CFLAGS += -std=c99 -pedantic -O2 
+#CFLAGS += -std=c99 -pedantic -O2 -DINCLUDE_NODE_EDITOR
+#CFLAGS += -std=c99 -pedantic -O2 -DINCLUDE_OVERVIEW
 
 SRC = main.c
 OBJ = $(SRC:.c=.o)
@@ -15,7 +17,7 @@ else
 	ifeq ($(UNAME_S),Darwin)
 		LIBS := -lglfw3 -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -lm -lGLEW -L/usr/local/lib
 	else
-		LIBS = -lglfw -lGL -lm -lGLU
+		LIBS = -lglfw3 -lGL -lm -lGLU -lX11 -lGL -lm -lGLU -lGLEW -ldl -lpthread
 	endif
 endif
 
